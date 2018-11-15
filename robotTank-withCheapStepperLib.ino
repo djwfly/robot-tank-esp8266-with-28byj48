@@ -24,10 +24,10 @@ const int motorPin6 = 12;//13;    // Pink   - In 2
 const int motorPin7 = 13;//14;    // Yellow - In 3
 const int motorPin8 = 15;//16;    // Orange - In 4
 
-const int stepsPerRevolution = 4096;
+const int stepsPerRevolution = 4076;
 const int s100mm2steps = int(100 / (3.14 * 40.5) * stepsPerRevolution);
 const int s45degreemm2steps = int(80 / (8 * 40.5) * stepsPerRevolution);
-const int defaultContinueRunSteps = 10;
+const int defaultContinueRunSteps = 5;
 
 
 // initialize the stepper library on pins 8 through 11 -> IN1, IN2, IN3, IN4
@@ -59,8 +59,7 @@ void goForward(long x) {
 
 void goForward_nx100mm(int x) {
   long totalSteps = x * s100mm2steps;
-  Serial.println();
-  Serial.print("goForward_nx100mm...");Serial.println(x);
+  Serial.print("goForward_nx100mm..."); Serial.println(x);
   goForward(totalSteps);
 }
 
@@ -72,6 +71,7 @@ void goBackward(long x) {
 
 void goBackward_nx100mm(int x) {
   long totalSteps = x * s100mm2steps;
+  Serial.print("goBackward_nx100mm..."); Serial.println(x);
   goBackward(totalSteps);
 }
 
@@ -83,6 +83,7 @@ void turnLeft(long x) {
 
 void turnLeft_nx45degree(int x) {
   long totalSteps = x * s45degreemm2steps;
+  Serial.print("turnLeft..."); Serial.println(x);
   turnLeft(totalSteps);
 }
 
@@ -93,6 +94,7 @@ void turnRight(long x) {
 
 void turnRight_nx45degree(int x) {
   long totalSteps = x * s45degreemm2steps;
+  Serial.print("turnRight..."); Serial.println(x);
   turnRight(totalSteps);
 }
 
@@ -102,35 +104,39 @@ void tankStop( ) {
   rightStepper.stop();
 }
 
-//int strChar2Int(String str )
-//{ Serial.println(str);
-//  int SerialNumbers[3];int SerialNumbersLength=0;int angle2move=0;int  Multiplier=1;
-//  while((str[SerialNumbersLength]>= '0')&& (str[SerialNumbersLength] <= '9')) {
-//   SerialNumbers[SerialNumbersLength] =(char)str[SerialNumbersLength] - '0'; SerialNumbersLength++;
-//  }
-//  if(SerialNumbersLength > 0){
-//    for(int i=SerialNumbersLength-1;i>=0;i--)
-//    {
-//      angle2move+=SerialNumbers[i]*Multiplier;
-//       Multiplier *=10;
-//    }
-//    SerialNumbersLength = 0;
-//    Multiplier=1;
-//    //Serial.println("angle2move");Serial.println(angle2move);
-//      Serial.println();
-//  Serial.print("angle2move...");Serial.println(angle2move);
-//    return angle2move;
-//    }
-//    else return 0;
-//}
+bool isFirstStepsAction;
+int totalActionsofSteps = 0;
+String actionString[10];
+int num_x_Action = 0;
+
+void divideActionString(String str)
+{
+  int p = 0, q = 0, k = 0, m = 0;
+  for (int i = 0; i < str.length(); i++)
+    if ((str[i]) == 'F' || (str[i]) == 'B' || (str[i]) == 'L' || (str[i]) == 'R')
+    {
+      q = p; p = i; k++;
+      if (k == 1)
+      {      
+        actionString[m] = str.substring(q, p);
+        k = 0; m++;
+      }
+    }
+  actionString[m] = str.substring(p);
+
+  totalActionsofSteps = m;
+  isFirstStepsAction = 1;
+  num_x_Action = 0;
+  if(m!=0)actionFlag=STP;
+}
 
 
-void processStepsAction( ) 
-{actionFlag=STP;
-  String s_action = server.arg("action"); //int xx=s_action.length(); char p[xx]=s_action;
-  if (s_action != "")
-  { steps = s_action.substring(1).toInt();
-    switch (s_action[0])
+
+void processStepsAction(String _str )
+{ //actionFlag=STP;
+  { steps =(_str.substring(1)).toInt();
+
+    switch (_str[0])
     {
       case 'F':
         pFunction = goForward_nx100mm;
@@ -188,7 +194,7 @@ void enableWebServer()
     server.send(200, "text/html", "stop");
   });
 
-  server.on("/steps", getMethod, processStepsAction);
+  server.on("/steps", getMethod, [] { String s_action = server.arg("action");   if (s_action != "") divideActionString(s_action);server.send(200, "text/html", "steps");});
   // server.on("/", getMethod, judgeAction);
 
   server.begin();
@@ -272,6 +278,13 @@ void loop() {
   ArduinoOTA.handle();
   // put your main code here, to run repeatedly:
   server.handleClient();
+
+  if (isFirstStepsAction)
+  { processStepsAction(actionString[0]);
+    isFirstStepsAction = 0;
+    num_x_Action = 1;
+  }
+
   if (actionFlag != actionFlagOld) {
     switch (actionFlag)
     {
@@ -299,8 +312,8 @@ void loop() {
         break;
 
       case STP:
-        pFunction(steps);
-        break;
+      if (num_x_Action==0) pFunction(steps);
+          break;
 
       default:
         break;
@@ -332,7 +345,13 @@ void loop() {
         break;
 
       case STP:
-      actionFlag=ST;
+         if (num_x_Action <= totalActionsofSteps)
+        {
+          processStepsAction(actionString[num_x_Action]);
+          pFunction(steps);
+          num_x_Action++;
+        }
+        else actionFlag = ST;
         break;
 
       default:
