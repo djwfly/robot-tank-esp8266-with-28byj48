@@ -25,9 +25,9 @@ const int motorPin7 = 13;//14;    // Yellow - In 3
 const int motorPin8 = 15;//16;    // Orange - In 4
 
 const int stepsPerRevolution = 4076;
-const int s100mm2steps = int(100 / (3.14 * 40.5) * stepsPerRevolution);
-const int s45degreemm2steps = int(80 / (8 * 40.5) * stepsPerRevolution);
-const int defaultContinueRunSteps = 5;
+const int s100mm2steps = int(100 / (3.14 * 40.5) * stepsPerRevolution*1.14);
+const int s45degreemm2steps = int(80 / (8 * 40.5) * stepsPerRevolution*1.14);
+const int defaultContinueRunSteps = 2;
 
 
 // initialize the stepper library on pins 8 through 11 -> IN1, IN2, IN3, IN4
