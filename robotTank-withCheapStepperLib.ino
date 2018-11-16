@@ -42,7 +42,7 @@ unsigned long moveStartTime = 0; // this will save the time (millis()) when we s
 bool ota_flag = true;
 uint16_t time_elapsed = 0;
 
-
+int speed = 16; //rpm scope 10~24
 int steps;
 int actionFlag = 0xFF;
 int actionFlagOld;
@@ -195,10 +195,13 @@ void enableWebServer()
   });
 
   server.on("/steps", getMethod, [] { String s_action = server.arg("action");   if (s_action != "") divideActionString(s_action);server.send(200, "text/html", "steps");});
-  // server.on("/", getMethod, judgeAction);
+  server.on("/speed/up", getMethod, [] {speed += 2; leftStepper.setRpm(speed); rightStepper.setRpm(speed); server.send(200, "text/html", "speed up"); });
+  server.on("/speed/down", getMethod, [] {speed -= 2; leftStepper.setRpm(speed); rightStepper.setRpm(speed); server.send(200, "text/html", "speed down"); });
 
   server.begin();
 }
+
+
 
 //void judgeAction()
 //{
@@ -271,8 +274,9 @@ void setup() {
   //  IPAddress myIP = WiFi.softAPIP();
   // leftStepper.setSpeed(60);rightStepper.setSpeed(60);
   enableWebServer();
-
-}
+  leftStepper.setRpm(speed);
+  rightStepper.setRpm(speed);
+  }
 
 void loop() {
   ArduinoOTA.handle();
